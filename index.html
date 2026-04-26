@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VLM 02 — Vision Transformers: ViT, DeiT, Swin, DINOv2 & SAM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">Vision-Language Models Series &mdash; Presentation 02</div>
+    <h1><span class="accent">Vision Transformers</span> &mdash; ViT, DeiT, Swin, DINOv2 &amp; SAM</h1>
+    <p class="subtitle">From patch embeddings to hierarchical attention: ViT, DeiT, Swin, DINOv2 self-supervised features, Segment Anything, patch size trade-offs, and how each architecture plugs into a VLM image encoder.</p>
+
+    <div class="tags">
+        <span class="tag">ViT</span>
+        <span class="tag">DeiT</span>
+        <span class="tag">Swin</span>
+        <span class="tag">DINOv2</span>
+        <span class="tag">SAM</span>
+        <span class="tag">Self-Supervised</span>
+        <span class="tag">Patch Embeddings</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">CNN bias</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Patch + PE</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">MHSA</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Distil / SSL</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Hierarchical</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">VLM Encode</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We&rsquo;ll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">From CNN to ViT &mdash; Why Patches Work</a></li>
+        <li><a href="#slide-02">ViT Architecture &mdash; Patch Embed, Position, Encoder</a></li>
+        <li><a href="#slide-03">DeiT &mdash; Data-Efficient Training</a></li>
+        <li><a href="#slide-04">Swin &mdash; Hierarchical Attention</a></li>
+        <li><a href="#slide-05">DINO / DINOv2 &mdash; Self-Supervised Vision Features</a></li>
+        <li><a href="#slide-06">SAM &mdash; Segment Anything</a></li>
+        <li><a href="#slide-07">Patch Size &amp; Resolution Trade-Offs</a></li>
+        <li><a href="#slide-08">ViT as a VLM Image Encoder</a></li>
+        <li><a href="#slide-09">What to Take Away</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>From CNN to ViT &mdash; Why Patches Work</h2>
+    <p>Convolutional networks dominated vision from AlexNet (2012) through EfficientNet (2019) because their inductive biases &mdash; translation equivariance, local receptive fields, weight sharing &mdash; matched natural image statistics well. The cost: global context required stacking many layers, and architectural engineering was hand-crafted.</p>
+
+    <p>Transformers process sequences without locality assumptions. <strong>ViT (An Image is Worth 16&times;16 Words, Dosovitskiy et al., 2020)</strong> made the observation: split the image into non-overlapping patches, flatten each patch to a vector, and treat them as a sequence. Self-attention then models <em>all pairwise patch interactions in one layer</em>.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>CNN inductive biases</h4>
+            <ul>
+                <li><strong>Translation equivariance:</strong> a cat in the corner looks the same as a cat in the centre</li>
+                <li><strong>Locality:</strong> 3&times;3 kernels can only see a 3&times;3 neighbourhood per layer</li>
+                <li><strong>Hierarchical:</strong> edge &rarr; texture &rarr; part &rarr; object is baked in by pooling</li>
+                <li>Works well with small data; struggles to model long-range dependencies</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>ViT inductive biases</h4>
+            <ul>
+                <li><strong>None by default:</strong> position encodings must carry all spatial info</li>
+                <li><strong>Global receptive field from layer 1:</strong> every patch attends to every other</li>
+                <li><strong>Data hungry:</strong> without pre-training, ViT underperforms ResNet on IN-1K</li>
+                <li>At scale: outperforms CNNs and generalises to broader distributions</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">The critical insight</div>
+        <p>A 224&times;224 image split into 16&times;16 patches yields 196 tokens of dimension 768. This is a short sequence compared to language (GPT-2 used 1,024 tokens), so the quadratic attention cost is tractable. The patch is the <em>unit of meaning</em>: the model learns which patches matter and which don&rsquo;t via attention weights.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>ViT Architecture &mdash; Patch Embed, Position, Encoder</h2>
+    <p>A ViT-B/16 on 224&times;224 input has exactly 197 tokens: 196 patch tokens + 1 prepended <code>[CLS]</code> token. The <code>[CLS]</code> token aggregates global information and is used as the image representation for classification or projection to language space.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 300" width="720" height="300" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .vb { fill: #161b22; stroke: #30363d; }
+                .vb.a { stroke: #76B900; fill: rgba(118,185,0,0.08); }
+                .vl { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; }
+                .vs { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+                .va { stroke: #76B900; stroke-width: 1.5; fill: none; marker-end: url(#mvit); }
+                .vt { fill: #76B900; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 11px; }
+            </style>
+            <defs>
+                <marker id="mvit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <text x="10" y="18" class="vt">ViT-B/16: 197 tokens &rarr; 12 encoder blocks &rarr; [CLS] for classification</text>
+
+            <rect x="10" y="35" width="80" height="60" rx="4" class="vb"/>
+            <text x="14" y="55" class="vl">Image</text>
+            <text x="14" y="70" class="vs">224&times;224&times;3</text>
+            <text x="14" y="84" class="vs">= 150,528 px</text>
+
+            <path d="M 90 65 L 130 65" class="va"/>
+
+            <rect x="130" y="35" width="100" height="60" rx="4" class="vb a"/>
+            <text x="135" y="55" class="vl">Patch Embed</text>
+            <text x="135" y="69" class="vs">16&times;16 patches</text>
+            <text x="135" y="81" class="vs">Conv2d(3,768,16,16)</text>
+            <text x="135" y="93" class="vs">196 &times; 768</text>
+
+            <path d="M 230 65 L 270 65" class="va"/>
+
+            <rect x="270" y="35" width="100" height="60" rx="4" class="vb"/>
+            <text x="275" y="55" class="vl">Add [CLS]</text>
+            <text x="275" y="69" class="vs">learnable token</text>
+            <text x="275" y="81" class="vs">197 &times; 768</text>
+            <text x="275" y="93" class="vs">+ pos embed</text>
+
+            <path d="M 370 65 L 410 65" class="va"/>
+
+            <rect x="410" y="20" width="120" height="100" rx="4" class="vb a"/>
+            <text x="415" y="42" class="vl">Encoder Block &times;12</text>
+            <text x="415" y="56" class="vs">LayerNorm</text>
+            <text x="415" y="68" class="vs">MHSA (12 heads, 64-d)</text>
+            <text x="415" y="80" class="vs">LayerNorm</text>
+            <text x="415" y="92" class="vs">MLP (768&rarr;3072&rarr;768)</text>
+            <text x="415" y="104" class="vs">GELU activation</text>
+            <text x="415" y="116" class="vs">Residual around each</text>
+
+            <path d="M 530 65 L 570 65" class="va"/>
+
+            <rect x="570" y="35" width="130" height="60" rx="4" class="vb a"/>
+            <text x="575" y="55" class="vl">Head</text>
+            <text x="575" y="70" class="vs">[CLS] token only</text>
+            <text x="575" y="82" class="vs">LayerNorm + Linear</text>
+            <text x="575" y="94" class="vs">or projection to d_embed</text>
+
+            <text x="10" y="160" class="vt">ViT family sizes (ImageNet-21K pre-training)</text>
+            <text x="10" y="180" class="vs">ViT-T/16: 5.7M    ViT-S/16: 22M    ViT-B/16: 86M    ViT-L/16: 307M    ViT-H/14: 632M    ViT-G/14: 1.84B</text>
+            <text x="10" y="196" class="vs">patch size /16 &rarr; 196 tokens   /14 &rarr; 256 tokens   /8 &rarr; 784 tokens  (all at 224&times;224)</text>
+            <text x="10" y="212" class="vs">Position encoding: 2D sine-cosine (original) or learnable 1D (most ViT-B/L models)</text>
+        </svg>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Variant</th><th>Layers</th><th>Heads</th><th>Hidden</th><th>MLP dim</th><th>Params</th><th>IN-1K acc</th></tr></thead>
+            <tbody>
+                <tr><td>ViT-S/16</td><td>12</td><td>6</td><td>384</td><td>1536</td><td>22M</td><td>79.9%</td></tr>
+                <tr><td>ViT-B/16</td><td>12</td><td>12</td><td>768</td><td>3072</td><td>86M</td><td>81.8%</td></tr>
+                <tr><td>ViT-L/16</td><td>24</td><td>16</td><td>1024</td><td>4096</td><td>307M</td><td>84.0%</td></tr>
+                <tr><td>ViT-H/14</td><td>32</td><td>16</td><td>1280</td><td>5120</td><td>632M</td><td>85.2%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>DeiT &mdash; Data-Efficient Training</h2>
+    <p><strong>DeiT (Data-efficient Image Transformers, Touvron et al., Facebook 2020)</strong> showed that ViT can match ResNets on IN-1K without extra data, purely through improved training recipes. The key innovations: stronger augmentation, mixup, cutmix, label smoothing, stochastic depth, and a novel <strong>distillation token</strong>.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Training recipe improvements</h4>
+            <ul>
+                <li><strong>RandAugment</strong> (9 ops, magnitude 9): rotation, colour jitter, shear</li>
+                <li><strong>Mixup</strong> &alpha;=0.8 + <strong>CutMix</strong> &alpha;=1.0: convex interpolation of inputs and labels</li>
+                <li><strong>Label smoothing</strong> &epsilon;=0.1</li>
+                <li><strong>Stochastic depth</strong> (drop path) p=0.1: randomly drops residual branches, acts as ensemble</li>
+                <li><strong>Repeated augmentation:</strong> each image seen &times;3 per epoch with different augs</li>
+                <li>300 epochs on IN-1K only &rarr; DeiT-B: <strong>81.8%</strong> top-1</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Distillation token</h4>
+            <p>DeiT-B&uArr; adds a second learned token alongside <code>[CLS]</code>. This <strong>distillation token</strong> is trained to mimic a CNN teacher (RegNetY-16GF: 82.9%) via soft cross-entropy on teacher logits. At inference the <code>[CLS]</code> and distillation token are averaged.</p>
+            <ul>
+                <li>DeiT-B with distillation: <strong>83.1%</strong> top-1 (matches ViT-L trained on JFT-300M)</li>
+                <li>Hard distillation (class label): works but less stable than soft</li>
+                <li>CNN teacher outperforms ViT teacher at this scale</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Why DeiT matters for VLMs</div>
+        <p>DeiT proved that the ViT architecture is not intrinsically data-hungry &mdash; it was the training recipe that was inadequate. All subsequent image encoders (DINOv2, EVA-CLIP, SigLIP) use DeiT-style augmentation recipes. The distillation token idea also influenced DINOv2&rsquo;s self-distillation design.</p>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">DeiT-B via timm (Python)</div>
+<pre><code><span class="kw">import</span> timm
+
+<span class="cm"># DeiT-B without distillation head (for embedding, not classification)</span>
+model <span class="kw">=</span> timm.<span class="fn">create_model</span>(
+    <span class="str">'deit_base_patch16_224'</span>,
+    pretrained<span class="kw">=True</span>,
+    num_classes<span class="kw">=0</span>   <span class="cm"># remove head &rarr; returns [B, 768] CLS embedding</span>
+)
+
+<span class="cm"># DeiT-B with distillation (deit_base_distilled_patch16_224)</span>
+<span class="cm"># features = model.forward_features(x) &rarr; [B, 197+1, 768]  (extra distill token)</span></code></pre>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Swin &mdash; Hierarchical Attention</h2>
+    <p><strong>Swin Transformer (Liu et al., Microsoft 2021)</strong> reintroduced hierarchy and local windows to the Transformer, recovering CNN-like inductive biases while keeping attention-based feature learning. It became the dominant backbone for dense prediction tasks (detection, segmentation) where multi-scale features are essential.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 240" width="720" height="240" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .sw { fill: #161b22; stroke: #30363d; }
+                .sw.a { stroke: #76B900; fill: rgba(118,185,0,0.08); }
+                .sl { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; }
+                .ss { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+                .sa { stroke: #76B900; stroke-width: 1.5; fill: none; marker-end: url(#mswin); }
+                .st { fill: #76B900; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 11px; }
+            </style>
+            <defs>
+                <marker id="mswin" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <text x="10" y="18" class="st">Swin-B on 224&times;224: 4 stages, 7&times;7 window W-MSA + SW-MSA</text>
+
+            <rect x="10"  y="35" width="120" height="75" rx="4" class="sw a"/>
+            <text x="15"  y="55" class="sl">Stage 1</text>
+            <text x="15"  y="69" class="ss">Patch embed 4&times;4</text>
+            <text x="15"  y="81" class="ss">56&times;56 tokens</text>
+            <text x="15"  y="93" class="ss">C=128, 2 layers</text>
+            <text x="15"  y="105" class="ss">W-MSA + SW-MSA</text>
+
+            <path d="M 130 72 L 170 72" class="sa"/>
+            <text x="133" y="68" class="ss">Patch merge</text>
+            <text x="133" y="80" class="ss">2&times;downsample</text>
+
+            <rect x="170" y="35" width="120" height="75" rx="4" class="sw a"/>
+            <text x="175" y="55" class="sl">Stage 2</text>
+            <text x="175" y="69" class="ss">28&times;28 tokens</text>
+            <text x="175" y="81" class="ss">C=256, 2 layers</text>
+            <text x="175" y="93" class="ss">W-MSA + SW-MSA</text>
+
+            <path d="M 290 72 L 330 72" class="sa"/>
+
+            <rect x="330" y="35" width="120" height="75" rx="4" class="sw a"/>
+            <text x="335" y="55" class="sl">Stage 3</text>
+            <text x="335" y="69" class="ss">14&times;14 tokens</text>
+            <text x="335" y="81" class="ss">C=512, 18 layers</text>
+            <text x="335" y="93" class="ss">W-MSA + SW-MSA</text>
+
+            <path d="M 450 72 L 490 72" class="sa"/>
+
+            <rect x="490" y="35" width="120" height="75" rx="4" class="sw a"/>
+            <text x="495" y="55" class="sl">Stage 4</text>
+            <text x="495" y="69" class="ss">7&times;7 tokens</text>
+            <text x="495" y="81" class="ss">C=1024, 2 layers</text>
+            <text x="495" y="93" class="ss">W-MSA + SW-MSA</text>
+
+            <path d="M 610 72 L 650 72" class="sa"/>
+            <rect x="650" y="50" width="60" height="44" rx="4" class="sw"/>
+            <text x="655" y="70" class="sl">Head</text>
+            <text x="655" y="84" class="ss">GAP + MLP</text>
+
+            <text x="10" y="145" class="st">W-MSA vs SW-MSA (alternating layers)</text>
+            <text x="10" y="163" class="ss">W-MSA:  non-overlapping 7&times;7 windows &rarr; O(n) attention (no cross-window connections)</text>
+            <text x="10" y="177" class="ss">SW-MSA: shift window by (3,3) &rarr; attention crosses original boundaries &rarr; restores global receptive field</text>
+            <text x="10" y="191" class="ss">Relative position bias: 2D learnable bias added to attention logits (not absolute PE)</text>
+            <text x="10" y="205" class="ss">Swin-B: 88M params, 83.5% IN-1K. Swin-L: 197M, 84.9%. SwinV2-G: 3B, 90.2% IN-22K&rarr;1K</text>
+        </svg>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Why Swin matters for dense tasks</div>
+        <p>The hierarchical feature map (C4, C8, C16, C32 at 1/4, 1/8, 1/16, 1/32 resolution) plugs directly into FPN necks used by Mask R-CNN, Cascade Mask R-CNN, and SegFormer. Swin-L with HTC++ backbone achieved <strong>58.7 box AP</strong> on COCO, surpassing EfficientDet and ResNet-based detectors. For VLM document understanding (LayoutLMv3, UDOP) the hierarchical tokens from Swin carry spatial layout information that a flat ViT cannot represent at the same resolution budget.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>DINO / DINOv2 &mdash; Self-Supervised Vision Features</h2>
+    <p><strong>DINO (Self-DIstillation with NO labels, Caron et al., Meta 2021)</strong> showed that self-supervised ViT features, without any label supervision, learn object-level semantic segmentation in their attention maps. <strong>DINOv2 (Oquab et al., Meta 2023)</strong> scaled this to ViT-g with a curated 142M image dataset (LVD-142M) and produced the best general-purpose vision features available.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>DINO self-distillation</h4>
+            <p><strong>Student</strong> network sees random-cropped &amp; augmented patches; <strong>Teacher</strong> network sees global views. Teacher weights are the EMA of student weights (no teacher gradients &mdash; momentum encoder). Loss: cross-entropy between student and teacher softmax output (centering + sharpening to avoid collapse).</p>
+            <ul>
+                <li>Emergent property: <code>[CLS]</code> attention maps &asymp; semantic segmentation masks without labels</li>
+                <li>ViT-S/8 DINO: kNN IN-1K 74.5%, linear probe 77.0%</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>DINOv2 improvements</h4>
+            <p>Combines DINO (self-distillation), iBOT (masked image modelling &mdash; predict masked patch tokens), and SwAV (online cluster assignments). Trained on LVD-142M: curated from 1.2B internet images via SSCD dedup + retrieval from ImageNet curators.</p>
+            <ul>
+                <li>ViT-g/14 DINOv2: linear probe IN-1K <strong>86.5%</strong>, depth estimation &amp; semantic seg SOTA</li>
+                <li>Frozen features outperform supervised ViT-L on ADE20K, NYUd, SUN-RGBD</li>
+                <li>Weights: <code>facebook/dinov2-giant</code> on HuggingFace</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">DINOv2 feature extraction</div>
+<pre><code><span class="kw">from</span> transformers <span class="kw">import</span> AutoModel
+<span class="kw">import</span> torch
+
+dinov2 <span class="kw">=</span> AutoModel.<span class="fn">from_pretrained</span>(<span class="str">"facebook/dinov2-giant"</span>)
+
+<span class="cm"># x: [B, 3, 518, 518]  (native res; also works at 224&times;224)</span>
+outputs <span class="kw">=</span> dinov2(pixel_values<span class="kw">=</span>x)
+cls_feat    <span class="kw">=</span> outputs.last_hidden_state[:, <span class="num">0</span>]          <span class="cm"># [B, 1536]</span>
+patch_feats <span class="kw">=</span> outputs.last_hidden_state[:, <span class="num">1</span>:]         <span class="cm"># [B, 1369, 1536] (37&times;37 @ 518px)</span>
+
+<span class="cm"># For dense tasks: reshape patch tokens to spatial grid</span>
+h <span class="kw">=</span> w <span class="kw">=</span> <span class="num">518</span> <span class="kw">//</span> <span class="num">14</span>   <span class="cm"># = 37</span>
+feats_2d <span class="kw">=</span> patch_feats.<span class="fn">reshape</span>(B, h, w, <span class="kw">-1</span>).<span class="fn">permute</span>(<span class="num">0</span>, <span class="num">3</span>, <span class="num">1</span>, <span class="num">2</span>)</code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">DINOv2 vs CLIP as a VLM backbone</div>
+        <p>DINOv2 patch tokens carry dense spatial semantic information; CLIP patch tokens are optimised for global image-text matching. For tasks requiring pixel-level understanding (depth, segmentation, OCR) DINOv2 wins. For tasks requiring open-vocabulary text alignment (classification, retrieval, VQA with novel categories) CLIP or SigLIP wins. Some recent VLMs (e.g. InternViL) concatenate both.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>SAM &mdash; Segment Anything</h2>
+    <p><strong>SAM (Segment Anything Model, Kirillov et al., Meta 2023)</strong> is a promptable segmentation system trained on SA-1B: 11 million images with over 1 billion automatically-generated masks. The image encoder is a <strong>ViT-H/16</strong> with windowed attention plus four global attention layers &mdash; the highest-capacity image encoder in any publicly released model at the time.</p>
+
+    <div class="diagram-flow">
+        <div class="diagram-box accent">Image Encoder<br><span style="font-size:0.7rem">ViT-H (636M)</span></div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">Image Embedding<br><span style="font-size:0.7rem">64&times;64 &times; 256</span></div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">Prompt Encoder<br><span style="font-size:0.7rem">points / boxes / masks</span></div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">Prompt Tokens<br><span style="font-size:0.7rem">sparse + dense</span></div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">Mask Decoder<br><span style="font-size:0.7rem">2-layer transformer</span></div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">3 Masks + IoU<br><span style="font-size:0.7rem">multi-resolution</span></div>
+    </div>
+
+    <h3>Architecture details</h3>
+    <ul>
+        <li><strong>Image encoder:</strong> ViT-H/16 @ 1024&times;1024. Windowed attention (14&times;14 windows) in most layers to keep memory O(n). 4 global attention layers at regular intervals restore global context. Outputs 64&times;64 &times; 256 feature map.</li>
+        <li><strong>Prompt encoder:</strong> Points/boxes &rarr; positional encodings + learned type embeddings. Masks &rarr; 4&times;downsampled convolution. Free-form text &rarr; CLIP text encoder (experimental).</li>
+        <li><strong>Mask decoder:</strong> Two transformer layers with bidirectional cross-attention (tokens attend to image, image attends to tokens). Predicts 3 masks per prompt (whole / part / subpart ambiguity) + IoU confidence.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">SAM 2 (2024) &mdash; video extension</div>
+        <p>SAM 2 adds a <strong>memory bank</strong> (streaming memory attention) to propagate masks across video frames. The image encoder switches to Hiera (hierarchical ViT) at 4 scales for efficiency. SAM 2 processes a 1024&times;1024 frame in ~8ms on an A100 vs ~51ms for SAM, enabling real-time interactive segmentation. Model weights are Apache-2.0 licensed.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Patch Size &amp; Resolution Trade-Offs</h2>
+    <p>Patch size is the primary dial controlling the token count, and hence the memory &amp; compute budget, of any ViT-based system. The relationship is: for an H&times;W image with patch size P, the number of tokens is (H/P)&times;(W/P). Attention cost is O(n&sup2;), so halving patch size quadruples attention FLOPs.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Patch</th><th>Tokens @ 224px</th><th>Tokens @ 448px</th><th>Tokens @ 896px</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td>/32</td><td>49</td><td>196</td><td>784</td><td>Very coarse; only viable at 224px for global tasks</td></tr>
+                <tr><td>/16</td><td>196</td><td>784</td><td>3136</td><td>Standard ViT-B/L; good balance</td></tr>
+                <tr><td>/14</td><td>256</td><td>1024</td><td>4096</td><td>EVA-CLIP, DINOv2, SigLIP-SO; finer spatial resolution</td></tr>
+                <tr><td>/8</td><td>784</td><td>3136</td><td>12544</td><td>Dense tasks; expensive; used in DINO-small pre-training</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Resolution interpolation</h3>
+    <p>Position embeddings are trained at a fixed resolution. To run at a higher resolution, <strong>bicubic interpolation</strong> of the 2D position embedding grid is used. This works reasonably for up to 2&times; the training resolution. Beyond that, fine-tuning on the target resolution is strongly recommended.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>AnyRes / tiling (VLM context)</h4>
+            <p>Modern VLMs (LLaVA-HD, LLaVA-Next, InternVL2, Qwen2-VL) tile a high-resolution image into sub-images that each fit the encoder&rsquo;s native resolution, then encode each tile separately plus a global thumbnail. A 1024&times;1024 image with 448px tiles = 4 tiles + 1 global = 5 encodings. See Deck 03 for full detail.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>NaViT &mdash; native resolution (Google, 2023)</h4>
+            <p>NaViT packs variable-resolution images into a sequence without padding, using fractional position encodings and sequence-level masking. This eliminates the resolution mismatch at train/eval time and allows mixed-aspect-ratio batching. Not yet mainstream in open models but used in Gemini&rsquo;s image encoder.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Practical recommendation</div>
+        <p>For a new VLM project in 2025: start with SigLIP-SO400M/14 @ 448px (1024 tokens per image) or DINOv2-g/14 @ 448px depending on whether text alignment or dense spatial features matter more. Avoid /8 patch size unless you have FlashAttention-3 and 80 GB VRAM to spare.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>ViT as a VLM Image Encoder</h2>
+    <p>When a ViT is inserted into a VLM the key question is: <em>which tokens do you pass to the language model?</em> The answer differs between architectures and has a large impact on the token budget and the type of visual understanding the model develops.</p>
+
+    <div class="hierarchy">
+        <div class="hierarchy-level">
+            <div class="hierarchy-label">LLaVA-1.5</div>
+            <div class="hierarchy-items">
+                <span class="hierarchy-item accent">CLIP ViT-L/14@336</span>
+                <span class="hierarchy-item">&rarr; 576 patch tokens</span>
+                <span class="hierarchy-item">&rarr; 2-layer MLP proj</span>
+                <span class="hierarchy-item">&rarr; prepended to LLM</span>
+                <span class="hierarchy-item">[CLS] discarded</span>
+            </div>
+        </div>
+        <div class="hierarchy-level">
+            <div class="hierarchy-label">InternVL 2</div>
+            <div class="hierarchy-items">
+                <span class="hierarchy-item accent">InternViT-6B (SigLIP-style)</span>
+                <span class="hierarchy-item">&rarr; patch tokens pixel-shuffle 2&times;</span>
+                <span class="hierarchy-item">&rarr; quarter token count</span>
+                <span class="hierarchy-item">&rarr; MLP proj &rarr; LLM</span>
+            </div>
+        </div>
+        <div class="hierarchy-level">
+            <div class="hierarchy-label">Qwen2-VL</div>
+            <div class="hierarchy-items">
+                <span class="hierarchy-item accent">ViT (native res via 2D RoPE)</span>
+                <span class="hierarchy-item">&rarr; 2D-RoPE patch tokens</span>
+                <span class="hierarchy-item">&rarr; MLP proj</span>
+                <span class="hierarchy-item">&rarr; merged into LLM (no fixed count)</span>
+            </div>
+        </div>
+        <div class="hierarchy-level">
+            <div class="hierarchy-label">BLIP-2</div>
+            <div class="hierarchy-items">
+                <span class="hierarchy-item accent">CLIP ViT-L or ViT-g</span>
+                <span class="hierarchy-item">&rarr; Q-Former (32 learned queries)</span>
+                <span class="hierarchy-item">&rarr; only 32 tokens to LLM</span>
+                <span class="hierarchy-item">max compression, information loss</span>
+            </div>
+        </div>
+    </div>
+
+    <h3>Frozen vs tuned encoder</h3>
+    <p>Most production VLMs keep the ViT frozen during Stage 1 (projection training) and optionally unfreeze it during Stage 2 (full fine-tuning). Unfreezing risks catastrophic forgetting of CLIP&rsquo;s alignment if fine-tuning data distribution is narrow. EVA-02 and InternViT are specifically designed to be tuned &mdash; their MIM pre-training gives them more stable feature representations that survive gradient updates without collapsing.</p>
+
+    <div class="callout">
+        <div class="callout-label">Token compression strategies</div>
+        <p><strong>Average pooling:</strong> simple but loses spatial structure. <strong>Pixel shuffle:</strong> groups P&times;P spatially adjacent tokens into one token of P&sup2;&times;C (used in InternVL). <strong>Q-Former / Perceiver Resampler:</strong> cross-attention with N learned queries &mdash; strongly compresses but risks dropping fine details needed for OCR. <strong>No compression</strong> (Qwen2-VL, LLaVA-Next): more tokens, higher LLM cost, better detail.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>What to Take Away</h2>
+    <ul>
+        <li><strong>ViT is a sequence model applied to patches.</strong> Patch size, resolution, and the use of [CLS] vs patch tokens are the primary architectural knobs.</li>
+        <li><strong>DeiT proved that ViT is not data-hungry</strong> &mdash; it was the training recipe. Strong augmentation, distillation, and stochastic depth get ResNet parity on IN-1K from scratch.</li>
+        <li><strong>Swin recovers hierarchy and locality</strong> via windowed attention + shifted windows, enabling hierarchical multi-scale features needed for dense prediction. Not commonly used as a VLM backbone today, but dominant in detection and segmentation.</li>
+        <li><strong>DINOv2-g/14</strong> is the best general-purpose frozen visual feature extractor for dense spatial tasks (depth, segmentation, retrieval). Its patch tokens carry semantic object information without any text supervision.</li>
+        <li><strong>SAM / SAM 2</strong> use ViT-H with windowed attention for efficient encoding of 1024px inputs. SAM 2 extends this to video via a streaming memory bank.</li>
+        <li><strong>Patch size /14 @ 448px = 1024 tokens</strong> is the current sweet spot for VLMs. Tiling (AnyRes) handles high-resolution inputs by encoding sub-crops independently.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Where to next</div>
+        <p>Deck 03 assembles these encoders into full VLMs: Llama 3.2 V, Qwen2-VL, InternVL2, Pixtral, Gemini, and Claude. You&rsquo;ll see how the projection connector (MLP, Q-Former, Perceiver Resampler) links the image encoder output to the LLM, and how different training curricula (alignment &rarr; instruction tuning &rarr; RLHF) shape the final model capabilities.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Vision_Language">Vision-Language Models Series</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Vision_Language">Back to Series Index</a></p>
+</footer>
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>
